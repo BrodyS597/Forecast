@@ -8,56 +8,67 @@
 import Foundation
 
 class NetworkController {
+    
+//Creating our baseURL using the base URL from our API, "WeatherBit"
     private static let baseURLString = "https://api.weatherbit.io/v2.0/forecast/daily"
     
+//Function to fetch the data from the API. Needs a completion handler as it hits an API endpoint. This will complete (completion:) with a valid day ([Day]?) if everything worked
     static func fetchDays(completion: @escaping ([Day]?) -> Void) {
-        // Step 1 - create our base URL:
+// Step 1 - create our base URL:
         guard var baseURL = URL(string: baseURLString) else {
-            // if we fail to build our baseURL, we will print the error, then complete with nil then return from the function
+// if we fail to build our baseURL, we will print the error, then complete with nil then return from the function
             print("Unable to create base URL from : \(baseURLString)")
             completion(nil)
             return
         }
-        // step 2- build out URL components
+// step 2- build out URL components
+//Appending the components to our baseURL to use in creating a finalURL
+// In this case, the forecast and daily are redundant as they are included in the API's baseURL. This API is saving us from this, others may not.
         baseURL.appendPathComponent("forecast")
         baseURL.appendPathComponent("daily")
         
-        //step 3- building out Query parameters
+//step 3- building out Query parameters
+//Creating URL components since we cannot add query items without components. URL components, structure and parse URLs based on their different information.
         var urlComponents = (URLComponents(url: baseURL, resolvingAgainstBaseURL: true))
-        //creating query items
+        
+//creating query items
+//creating a new constant assigned the value of a URLQueryItem initialized with the name key, which has a value of my API key
         let keyQuery = URLQueryItem(name: "key", value: "ddae98f4e48d427f9c59a2ec2c5521c6")
         let postalQuery = URLQueryItem(name: "postal_code", value: "84074")
         let unitsQuery = URLQueryItem(name: "units", value: "I")
         let countryQuery = URLQueryItem(name: "country", value: "US")
-        //adding our query items to our url
+//adding our query items to our url
         urlComponents?.queryItems = [keyQuery, postalQuery, unitsQuery, countryQuery]
     
-        //step 4- get our final url
+//step 4- get our final url
+// guarding that we can create our final URL, from our optional url property, or we will complete with nil and return
         guard let finalURL = urlComponents?.url else {
             print("unable to create the final url from \(urlComponents?.description)")
             completion(nil)
             return
         }
         
-        // step 5 -
+// step 5 - create a data task
+// This will complete with a response and either an error or data. if successful, we need to decode into our objects
         URLSession.shared.dataTask(with: finalURL) { data, _, error in
-            // Step 6 - check for the error
+// Step 6 - check for the error
             if let error = error {
                 print(error)
                 completion(nil)
             }
             
-            //Step 7- chekcing for the data
+//Step 7- checking for the data
             guard let data = data else {
                 print("No data was found")
                 completion(nil)
                 return
             }
             
-            //Step 8 - DeSerialize our data
+//Step 8 - DeSerialize our data
             do {
+                
                 if let topLevelDictionary = try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) as? [String: Any] {
-                    // grab data from dictionary
+// grabbing the data from the dictionary
                     guard let cityName = topLevelDictionary["city_name"] as? String,
                             let dataArray = topLevelDictionary["data"] as? [[String: Any]]
                     else {
@@ -65,9 +76,9 @@ class NetworkController {
                         completion(nil)
                         return
                     }
-                    //step 9 - pass data into optional init
+//step 9 - pass data into optional init
                     var tempArray: [Day] = []
-                    
+// Looping through the array to get access to the indivicdual disctionaries within, storing the Day objects in an empty array 
                     for data in dataArray {
                         if let day = Day(dayDictionary: data, cityName: cityName) {
                             tempArray.append(day)
@@ -75,13 +86,14 @@ class NetworkController {
                             print("Failed to decode day: \(data)")
                         }
                     }
-                    //step - 10 COmplete with our data
+//step - 10 Completing with our data
                     completion(tempArray)
                 }
             } catch let error {
                 print(error)
                 completion(nil)
             }
+//Resumes the task if it is suspended, and is *REQUIRED* to start/resume
         }.resume()
     }
 }// end of class

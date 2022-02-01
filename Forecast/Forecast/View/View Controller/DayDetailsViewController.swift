@@ -27,8 +27,8 @@ class DayDetailsViewController: UIViewController {
         dayForcastTableView.dataSource = self
         dayForcastTableView.delegate = self
         
-        NetworkController.fetchDays { days in
-            guard let days = days else { return }
+        NetworkController.fetchDays { tempDaysArray in
+            guard let days = tempDaysArray else { return }
             self.days = days
             
             DispatchQueue.main.async {
